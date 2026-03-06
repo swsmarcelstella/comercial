@@ -1,0 +1,339 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Gerador de Propostas - Save Comercial</title>
+  <link rel="stylesheet" href="styles.css" />
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+  <main class="layout">
+    <section class="panel form-panel">
+      <header class="brand-hero">
+        <div class="brand-topline">Save Water Solutions</div>
+        <h1>Gerador de Propostas</h1>
+        <p class="muted">Qualidade do Ar, Potabilidade e Legionella em um fluxo comercial rápido.</p>
+        <div class="chips">
+          <span class="chip">ABNT NBR 17037:2023</span>
+          <span class="chip">GM/MS 888/2021</span>
+          <span class="chip">POP-023 Legionella</span>
+        </div>
+      </header>
+
+      <section class="section-card">
+        <h2>Dados da proposta</h2>
+        <div class="grid two">
+          <label>Número da proposta
+            <input id="proposalNumber" placeholder="Ex.: 2026.01" />
+          </label>
+          <label>Data
+            <input id="proposalDate" type="date" />
+          </label>
+          <label>Cidade de emissão
+            <input id="proposalCity" placeholder="Ex.: Salvador" />
+          </label>
+          <label>Validade (dias)
+            <input id="validityDays" type="number" min="1" value="60" />
+          </label>
+          <label>Status da proposta
+            <select id="proposalStatus">
+              <option value="open">Aberta</option>
+              <option value="converted">Convertida</option>
+              <option value="lost">Perdida</option>
+            </select>
+          </label>
+        </div>
+      </section>
+
+      <section class="section-card">
+        <h2>Dados do cliente</h2>
+        <div class="grid two">
+          <label>Cliente / Empresa
+            <input id="clientName" placeholder="Nome da empresa" />
+          </label>
+          <label>CNPJ
+            <input id="clientCnpj" placeholder="00.000.000/0000-00" />
+          </label>
+          <label>A/C (destinatário)
+            <input id="attentionTo" placeholder="Nome do contato" />
+          </label>
+          <label>E-mail
+            <input id="clientEmail" placeholder="contato@empresa.com" />
+          </label>
+          <label>Telefone
+            <input id="clientPhone" placeholder="(00) 00000-0000" />
+          </label>
+          <label>Endereço
+            <input id="clientAddress" placeholder="Endereço completo" />
+          </label>
+        </div>
+      </section>
+
+      <section class="section-card">
+        <h2>Itens da proposta</h2>
+        <div id="itemsContainer" class="stack"></div>
+        <button id="addItemBtn" type="button" class="btn secondary" onclick="if(window.__fallbackAddItem){window.__fallbackAddItem();}">Adicionar item</button>
+      </section>
+
+      <section class="section-card">
+        <h2>Custos Internos e Margem (uso interno)</h2>
+        <div class="grid two">
+          <label>Imposto (%)
+            <input id="taxPercent" type="number" min="0" step="0.01" value="0" />
+          </label>
+          <label>Comissão (%)
+            <input id="commissionPercent" type="number" min="0" step="0.01" value="0" />
+          </label>
+        </div>
+        <div id="internalSummary" class="internal-summary"></div>
+      </section>
+
+      <section class="section-card">
+        <h2>Condições comerciais</h2>
+        <div class="grid two">
+          <label>Prazo para coleta
+            <input id="collectionTime" value="Agendamento em até 5 dias úteis e visita técnica em até 15 dias úteis" />
+          </label>
+          <label>Prazo para laudo
+            <input id="reportTime" value="Até 10 dias úteis após a coleta" />
+          </label>
+          <label>Forma de pagamento
+            <input id="paymentTerms" value="1x boleto bancário, 30 ddl após emissão da nota fiscal" />
+          </label>
+          <label>Contato comercial (assinatura)
+            <input id="salesPerson" value="Equipe Comercial Save" />
+          </label>
+        </div>
+      </section>
+
+      <section class="section-card">
+        <label>Observações gerais
+          <textarea id="generalNotes" rows="4" placeholder="Informações adicionais importantes..."></textarea>
+        </label>
+      </section>
+
+      <section class="section-card">
+        <h2>Edição da proposta</h2>
+        <div class="grid two">
+          <label>Carregar proposta salva
+            <select id="editProposalSelect"></select>
+          </label>
+          <div class="edit-actions">
+            <button id="loadSelectedProposalBtn" type="button" class="btn">Carregar seleção</button>
+            <button id="syncSupabaseBtn" type="button" class="btn">Sincronizar Supabase</button>
+            <button id="newProposalBtn" type="button" class="btn secondary">Nova proposta</button>
+          </div>
+        </div>
+        <p id="editingHint" class="helper-text">Modo atual: nova proposta</p>
+      </section>
+
+      <div class="actions">
+        <button id="generateBtn" type="button" class="btn primary" onclick="if(window.__fallbackGenerate){window.__fallbackGenerate();}">Gerar proposta</button>
+        <button id="saveProposalBtn" type="button" class="btn primary">Salvar proposta</button>
+        <button id="updateProposalBtn" type="button" class="btn">Atualizar proposta</button>
+        <button id="newProposalBtnInline" type="button" class="btn secondary">Nova proposta</button>
+        <button id="printBtn" type="button" class="btn">Imprimir / Salvar PDF</button>
+        <button id="saveBtn" type="button" class="btn">Salvar JSON</button>
+        <label class="btn file-btn">Carregar JSON
+          <input id="loadFile" type="file" accept="application/json" />
+        </label>
+      </div>
+      <p id="runtimeErrorHint" class="helper-text" style="display:none;color:#a53831;"></p>
+    </section>
+
+    <section class="panel preview-panel">
+      <div class="preview-head">
+        <p>Pré-visualização da proposta</p>
+      </div>
+      <div id="proposalPreview" class="preview empty">
+        Preencha os dados e clique em "Gerar proposta".
+      </div>
+
+      <section class="dashboard panel-lite">
+        <div class="dashboard-head">
+          <h3>Dashboard Comercial</h3>
+          <select id="dashboardPeriod">
+            <option value="month">Mês atual</option>
+            <option value="30days">Últimos 30 dias</option>
+            <option value="year">Ano atual</option>
+          </select>
+        </div>
+
+        <div id="dashboardCards" class="cards-grid"></div>
+
+        <div class="dashboard-grid">
+          <div class="panel-lite chart-panel">
+            <h4>Conversão</h4>
+            <div class="chart-row">
+              <div>
+                <p class="chart-label">Quantidade</p>
+                <div class="bar-wrap"><div id="qtyConvertedBar" class="bar converted"></div></div>
+                <div class="bar-wrap"><div id="qtyNotConvertedBar" class="bar not-converted"></div></div>
+              </div>
+              <div>
+                <p class="chart-label">Valor</p>
+                <div class="bar-wrap"><div id="valueConvertedBar" class="bar converted"></div></div>
+                <div class="bar-wrap"><div id="valueNotConvertedBar" class="bar not-converted"></div></div>
+              </div>
+            </div>
+          </div>
+
+          <div class="panel-lite">
+            <h4>Propostas recentes</h4>
+            <div class="table-wrap">
+              <table id="recentProposalsTable">
+                <thead>
+                  <tr>
+                    <th>Número</th>
+                    <th>Cliente</th>
+                    <th>Data</th>
+                    <th>Status</th>
+                    <th>Total</th>
+                    <th>Ação</th>
+                  </tr>
+                </thead>
+                <tbody></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </section>
+    </section>
+  </main>
+
+  <template id="itemTemplate">
+    <article class="item-card">
+      <div class="item-head">
+        <strong>Item <span class="item-index"></span></strong>
+        <button type="button" class="btn danger small remove-item">Remover</button>
+      </div>
+      <div class="grid two">
+        <label>Tipo de serviço
+          <select class="item-service">
+            <option value="qar">Qualidade do Ar (ABNT NBR 17037:2023)</option>
+            <option value="potabilidade">Potabilidade da Água</option>
+            <option value="legionella">Legionella</option>
+            <option value="custom">Customizado</option>
+          </select>
+        </label>
+        <label>Unidade
+          <input class="item-unit" value="ponto" />
+        </label>
+        <label>Quantidade
+          <input class="item-qty" type="number" min="1" value="1" />
+        </label>
+        <label>Valor unitário (R$)
+          <input class="item-price" type="number" min="0" step="0.01" value="0" />
+        </label>
+      </div>
+
+      <div class="grid three internal-grid">
+        <label>Custo fornecedor unit. (R$)
+          <input class="item-supplier-cost" type="number" min="0" step="0.01" value="0" />
+        </label>
+        <label>Logística/deslocamento (R$)
+          <input class="item-logistics-cost" type="number" min="0" step="0.01" value="0" />
+        </label>
+        <label>Envio de amostra (R$)
+          <input class="item-sample-shipping-cost" type="number" min="0" step="0.01" value="0" />
+        </label>
+      </div>
+
+      <label>Descrição do item
+        <textarea class="item-description" rows="4"></textarea>
+      </label>
+    </article>
+  </template>
+
+  <script>
+    window.SUPABASE_URL = "https://xozonnoqdbvifsdkuezh.supabase.co";
+    window.SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inhvem9ubm9xZGJ2aWZzZGt1ZXpoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjYwNTQzMDUsImV4cCI6MjA4MTYzMDMwNX0.1QNaeD6U8MSDSvmw9QMUUmegD2Pjqjce2jxsicFWn1k";
+    window.SAVE_LOGO_URL = "";
+  </script>
+  <script>
+    (function () {
+      function safeText(value) {
+        return String(value || "").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+      }
+
+      window.__fallbackAddItem = function () {
+        if (typeof window.__appAddItem === "function") {
+          window.__appAddItem();
+          return;
+        }
+
+        var container = document.getElementById("itemsContainer");
+        var template = document.getElementById("itemTemplate");
+        if (container && template && template.content && template.content.firstElementChild) {
+          var clone = template.content.firstElementChild.cloneNode(true);
+          var remove = clone.querySelector(".remove-item");
+          if (remove) {
+            remove.onclick = function () {
+              clone.remove();
+            };
+          }
+          container.appendChild(clone);
+          return;
+        }
+
+        if (!container) return;
+        var card = document.createElement("article");
+        card.className = "item-card";
+        card.innerHTML =
+          '<div class="item-head"><strong>Item</strong></div>' +
+          '<label>Descrição do item' +
+          '<textarea rows="3" class="fallback-item-desc" placeholder="Descreva o item..."></textarea>' +
+          "</label>";
+        container.appendChild(card);
+      };
+
+      window.__fallbackGenerate = function () {
+        if (typeof window.__appGenerate === "function") {
+          window.__appGenerate();
+          return;
+        }
+
+        var preview = document.getElementById("proposalPreview");
+        if (!preview) return;
+        var number = document.getElementById("proposalNumber");
+        var client = document.getElementById("clientName");
+        var city = document.getElementById("proposalCity");
+        var date = document.getElementById("proposalDate");
+        var items = document.querySelectorAll("#itemsContainer .item-card");
+
+        var rows = "";
+        for (var i = 0; i < items.length; i++) {
+          var item = items[i];
+          var service = item.querySelector(".item-service");
+          var qty = item.querySelector(".item-qty");
+          var price = item.querySelector(".item-price");
+          var desc = item.querySelector(".item-description, .fallback-item-desc");
+          var q = Number((qty && qty.value) || 0);
+          var p = Number((price && price.value) || 0);
+          var total = q * p;
+          rows +=
+            "<tr>" +
+            "<td>" + (i + 1) + "</td>" +
+            "<td>" + safeText((service && service.options && service.options[service.selectedIndex] ? service.options[service.selectedIndex].text : desc && desc.value) || \"Item\") + "</td>" +
+            "<td>" + safeText(String(q || 0)) + "</td>" +
+            "<td>R$ " + safeText(p.toFixed(2)) + "</td>" +
+            "<td>R$ " + safeText(total.toFixed(2)) + "</td>" +
+            "</tr>";
+        }
+
+        preview.className = "preview";
+        preview.innerHTML =
+          '<article class="proposal">' +
+          "<h2>Proposta Comercial Nº " + safeText(number && number.value) + "</h2>" +
+          "<p><strong>" + safeText(city && city.value) + "</strong>, " + safeText(date && date.value) + "</p>" +
+          "<p><strong>Cliente:</strong> " + safeText(client && client.value) + "</p>" +
+          "<table><thead><tr><th>#</th><th>Descrição</th><th>Qtd.</th><th>Valor Unit.</th><th>Total</th></tr></thead><tbody>" + rows + "</tbody></table>" +
+          "<p>Proposta gerada em modo compatibilidade.</p>" +
+          "</article>";
+      };
+    })();
+  </script>
+  <script src="script.js"></script>
+</body>
+</html>
